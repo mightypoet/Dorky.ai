@@ -1,5 +1,6 @@
+
 import React, { useState, useCallback, useRef } from 'react';
-import { Download, BrainCircuit, Activity, Database, AlertCircle, Sparkles, Pause, Play, Square, Save } from 'lucide-react';
+import { Download, BrainCircuit, Activity, Database, Sparkles, Pause, Play, Square, Save } from 'lucide-react';
 import { InputForm } from './components/InputForm.tsx';
 import { Terminal } from './components/Terminal.tsx';
 import { LeadTable } from './components/LeadTable.tsx';
@@ -28,18 +29,11 @@ const App: React.FC = () => {
   }, []);
 
   const handleSearch = async (params: SearchParams) => {
-    if (!process.env.API_KEY) {
-      addLog("ERROR: API_KEY is not defined.", "error");
-      setAppState(AppState.ERROR);
-      return;
-    }
-
     setAppState(AppState.SEARCHING);
     setLeads([]);
     setLogs([]);
     setCurrentProgress(0);
     
-    // Reset control flags
     abortControllerRef.current = false;
     pauseSignalRef.current = false;
 
@@ -48,14 +42,12 @@ const App: React.FC = () => {
     addLog("System initialized. Protocol: Dorky.ai", "info");
     addLog(`Vector: ${params.niche}`, "info");
     if (params.location) addLog(`Geo-fence: ${params.location}`, "info");
-    if (params.competitor) addLog(`Reference ID: ${params.competitor}`, "info");
 
     try {
       const discoveredProfiles = await gemini.discoverLeads(params);
       
       if (discoveredProfiles.length === 0) {
-        addLog("0 Targets found matching strict criteria.", "warning");
-        addLog("Suggestion: Broaden location or remove specific constraints.", "info");
+        addLog("0 Targets found. Adjust parameters.", "warning");
         setAppState(AppState.IDLE);
         return;
       }
@@ -64,52 +56,39 @@ const App: React.FC = () => {
       setAppState(AppState.ENRICHING);
 
       for (let i = 0; i < discoveredProfiles.length; i++) {
-        // Check for Stop
-        if (abortControllerRef.current) {
-            addLog("Process aborted by user.", "warning");
-            break;
-        }
-
-        // Check for Pause
+        if (abortControllerRef.current) break;
         while (pauseSignalRef.current) {
             await new Promise(r => setTimeout(r, 500));
-            // Check abort again inside pause loop
             if (abortControllerRef.current) break;
         }
         if (abortControllerRef.current) break;
 
         const rawProfile = discoveredProfiles[i];
-        
-        // Use a subtle delay to not overwhelm
         await new Promise(r => setTimeout(r, 800));
         
         try {
             const enrichedLead = await gemini.enrichLead({
                 ...rawProfile,
                 niche: params.niche,
-                location: params.location // Pass target location for verification
+                location: params.location
             });
             
-            // Log successful extraction
-            if (enrichedLead.phone) {
-               addLog(`+ Contact Extracted: ${enrichedLead.username} [PHONE]`, "success");
-            } else if (enrichedLead.email) {
-               addLog(`+ Contact Extracted: ${enrichedLead.username} [EMAIL]`, "success");
+            if (enrichedLead.email || enrichedLead.phone) {
+               addLog(`+ Contact: ${enrichedLead.username}`, "success");
             } else {
                addLog(`> Analyzed: ${enrichedLead.username}`, "info");
             }
 
             setLeads(prev => [...prev, enrichedLead]);
-            
         } catch (e) {
-            addLog(`Analysis failed: ${rawProfile.username}`, "error");
+            addLog(`Analysis error: ${rawProfile.username}`, "error");
         }
 
         setCurrentProgress(Math.round(((i + 1) / discoveredProfiles.length) * 100));
       }
 
       setAppState(AppState.COMPLETE);
-      addLog("Intelligence gathering session ended.", "success");
+      addLog("Intelligence gathering complete.", "success");
 
     } catch (error) {
       addLog(`System Failure: ${(error as Error).message}`, "error");
@@ -119,7 +98,7 @@ const App: React.FC = () => {
 
   const handleStop = () => {
       abortControllerRef.current = true;
-      pauseSignalRef.current = false; // Unpause so it can break
+      pauseSignalRef.current = false;
       setAppState(AppState.COMPLETE);
   };
 
@@ -158,7 +137,6 @@ const App: React.FC = () => {
         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6 scrollbar-hide">
           <InputForm onSearch={handleSearch} disabled={appState === AppState.SEARCHING || appState === AppState.ENRICHING || appState === AppState.PAUSED} />
           
-          {/* Active Process Controls */}
           {(appState === AppState.SEARCHING || appState === AppState.ENRICHING || appState === AppState.PAUSED) && (
               <div className="bg-neutral-900 border border-neutral-800 p-4 rounded-lg space-y-3 animate-in fade-in slide-in-from-top-2">
                   <div className="flex items-center justify-between text-xs text-neutral-400 uppercase tracking-widest mb-2">
@@ -177,12 +155,10 @@ const App: React.FC = () => {
                               <span className="text-[10px]">Pause</span>
                           </button>
                       )}
-                      
                       <button onClick={handleStop} className="bg-rose-900/30 hover:bg-rose-900/50 text-rose-400 border border-rose-900 rounded p-2 flex flex-col items-center justify-center transition-colors">
                           <Square className="w-4 h-4 mb-1 fill-current" />
                           <span className="text-[10px]">Stop</span>
                       </button>
-
                       <button onClick={handleExport} className="bg-neutral-800 hover:bg-neutral-700 text-neutral-300 border border-neutral-700 rounded p-2 flex flex-col items-center justify-center transition-colors">
                           <Save className="w-4 h-4 mb-1" />
                           <span className="text-[10px]">Export</span>
@@ -202,34 +178,22 @@ const App: React.FC = () => {
               <button 
                 onClick={handleExport}
                 className="bg-teal-600 hover:bg-teal-500 text-white p-2 rounded-md transition-colors shadow-lg shadow-teal-900/20"
-                title="Download Data"
               >
                 <Download className="w-4 h-4" />
               </button>
             </div>
           )}
-
-           {(!process.env.API_KEY) && (
-             <div className="bg-rose-900/10 border border-rose-900/20 p-4 rounded-lg flex items-start space-x-3">
-               <AlertCircle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
-               <div className="text-xs text-rose-200/80">
-                 <p className="font-medium text-rose-400">API Key Required</p>
-               </div>
-             </div>
-           )}
         </div>
 
         <div className="p-4 border-t border-neutral-900 text-[10px] text-neutral-700 text-center uppercase tracking-widest">
-          v2.0.1 • Deepmind Protocol
+          v2.1.0 • Stable Core
         </div>
       </div>
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col h-full overflow-hidden bg-neutral-950 relative">
-        {/* Subtle grid background */}
         <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.02] pointer-events-none"></div>
         
-        {/* Top Panel - Analytics */}
         <div className="h-[280px] p-6 border-b border-neutral-900/80 z-10">
           <div className="flex items-center space-x-2 mb-4">
              <Activity className="w-4 h-4 text-teal-500" />
@@ -238,7 +202,6 @@ const App: React.FC = () => {
           <Dashboard leads={leads} />
         </div>
 
-        {/* Bottom Panel - Data */}
         <div className="flex-1 p-6 overflow-hidden flex flex-col z-10">
           <div className="flex items-center justify-between mb-4">
              <div className="flex items-center space-x-2">
