@@ -24,8 +24,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ leads }) => {
   );
 
   // Stats
-  const emailCount = leads.filter(l => l.email).length;
-  const noEmailCount = leads.length - emailCount;
+  const contactFoundCount = leads.filter(l => l.email || l.phone || l.website).length;
+  const noContactCount = leads.length - contactFoundCount;
   
   const highQuality = leads.filter(l => l.engagementScore >= 70).length;
   const midQuality = leads.filter(l => l.engagementScore >= 40 && l.engagementScore < 70).length;
@@ -61,12 +61,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ leads }) => {
          <div className="text-xs text-neutral-500 mb-2 uppercase tracking-wider font-semibold">Contact Rate</div>
          <div className="flex items-center justify-between px-4">
              <div className="text-center">
-                 <div className="text-2xl font-light text-teal-400">{emailCount}</div>
+                 <div className="text-2xl font-light text-teal-400">{contactFoundCount}</div>
                  <div className="text-[10px] text-neutral-600 uppercase">Found</div>
              </div>
              <div className="h-12 w-px bg-neutral-800"></div>
              <div className="text-center">
-                 <div className="text-2xl font-light text-neutral-600">{noEmailCount}</div>
+                 <div className="text-2xl font-light text-neutral-600">{noContactCount}</div>
                  <div className="text-[10px] text-neutral-600 uppercase">Missing</div>
              </div>
          </div>
@@ -96,7 +96,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ leads }) => {
                         <div className="text-[10px] text-neutral-500 truncate">@{lead.username}</div>
                     </div>
                     <div className="flex flex-col items-end space-y-1">
-                        {lead.email ? <CheckCircle2 className="w-3 h-3 text-teal-500/70" /> : <XCircle className="w-3 h-3 text-neutral-700" />}
+                        {(lead.email || lead.phone || lead.website) ? <CheckCircle2 className="w-3 h-3 text-teal-500/70" /> : <XCircle className="w-3 h-3 text-neutral-700" />}
                         {lead.engagementScore > 0 && (
                             <div className="text-[10px] font-mono text-neutral-600 flex items-center">
                                 <Zap className="w-2 h-2 mr-1" />{lead.engagementScore}

@@ -40,12 +40,36 @@ export const LeadTable: React.FC<LeadTableProps> = ({ leads }) => {
                 <td className="px-5 py-3">
                   <div className="space-y-1.5">
                     {lead.email ? (
-                      <div className="flex items-center text-neutral-300 text-xs"><Mail className="w-3 h-3 mr-2 text-teal-600"/> {lead.email}</div>
-                    ) : <span className="text-neutral-700 text-[10px]">—</span>}
+                      <div className="flex items-center text-neutral-300 text-xs" title={lead.email}>
+                        <Mail className="w-3 h-3 mr-2 text-teal-600 shrink-0"/> 
+                        <span className="truncate max-w-[180px]">{lead.email}</span>
+                      </div>
+                    ) : null}
                     
                     {lead.phone ? (
-                      <div className="flex items-center text-neutral-300 text-xs"><Smartphone className="w-3 h-3 mr-2 text-indigo-500"/> {lead.phone}</div>
+                      <div className="flex items-center text-neutral-300 text-xs" title={lead.phone}>
+                        <Smartphone className="w-3 h-3 mr-2 text-indigo-500 shrink-0"/> 
+                        <span className="truncate max-w-[180px]">{lead.phone}</span>
+                      </div>
                     ) : null}
+
+                    {lead.website ? (
+                      <div className="flex items-center text-neutral-300 text-xs" title={lead.website}>
+                        <Globe className="w-3 h-3 mr-2 text-amber-500 shrink-0"/> 
+                        <a 
+                          href={lead.website.startsWith('http') ? lead.website : `https://${lead.website}`} 
+                          target="_blank" 
+                          rel="noreferrer" 
+                          className="hover:text-teal-400 transition-colors truncate max-w-[180px]"
+                        >
+                          {lead.website.replace(/^https?:\/\//, '').replace(/\/$/, '')}
+                        </a>
+                      </div>
+                    ) : null}
+
+                    {!lead.email && !lead.phone && !lead.website && (
+                      <span className="text-neutral-700 text-[10px]">—</span>
+                    )}
                   </div>
                 </td>
                 <td className="px-5 py-3">
