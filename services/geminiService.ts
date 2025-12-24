@@ -1,5 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
-import { Lead, SearchParams } from "../types";
+import { Lead, SearchParams } from "../types.ts";
 
 // Helper to generate a UUID
 const uuid = () => Math.random().toString(36).substring(2, 9);

@@ -1,12 +1,12 @@
 import React, { useState, useCallback, useRef } from 'react';
 import { Download, BrainCircuit, Activity, Database, AlertCircle, Sparkles, Pause, Play, Square, Save } from 'lucide-react';
-import { InputForm } from './components/InputForm';
-import { Terminal } from './components/Terminal';
-import { LeadTable } from './components/LeadTable';
-import { Dashboard } from './components/Dashboard';
-import { Lead, LogEntry, SearchParams, AppState } from './types';
-import { GeminiService } from './services/geminiService';
-import { exportToCSV } from './services/exportService';
+import { InputForm } from './components/InputForm.tsx';
+import { Terminal } from './components/Terminal.tsx';
+import { LeadTable } from './components/LeadTable.tsx';
+import { Dashboard } from './components/Dashboard.tsx';
+import { Lead, LogEntry, SearchParams, AppState } from './types.ts';
+import { GeminiService } from './services/geminiService.ts';
+import { exportToCSV } from './services/exportService.ts';
 
 const App: React.FC = () => {
   const [leads, setLeads] = useState<Lead[]>([]);
