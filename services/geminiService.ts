@@ -1,5 +1,6 @@
+
 import { GoogleGenAI } from "@google/genai";
-import { Lead, SearchParams } from "../types.ts";
+import { Lead, SearchParams, SearchMode } from "../types.ts";
 
 const uuid = () => Math.random().toString(36).substring(2, 9);
 
@@ -25,29 +26,34 @@ const extractJson = (text: string | undefined | null) => {
 };
 
 export class GeminiService {
-  // We initialize the client right before use to ensure the latest process.env.API_KEY
   private getClient() {
     return new GoogleGenAI({ apiKey: process.env.API_KEY });
   }
 
   async discoverLeads(params: SearchParams): Promise<Partial<Lead>[]> {
     const ai = this.getClient();
-    const { niche, location, leadCount, competitor } = params;
+    const { niche, location, leadCount, competitor, mode } = params;
     const cleanCompetitor = competitor ? competitor.replace('@', '') : '';
 
+    const intensityNote = mode === 'forensic' 
+      ? "Perform a deep-dive scan. Look for high-intent business profiles with clear contact calls-to-action." 
+      : "Perform a rapid discovery scan for general active profiles.";
+
     const prompt = `
-      ROLE: OSINT Intelligence Officer.
-      OBJECTIVE: Identify ${Math.min(leadCount, 25)} Instagram handles in the "${niche}" niche.
+      ROLE: Advanced OSINT Intelligence Agent.
+      INTENSITY: ${mode.toUpperCase()} MODE.
+      OBJECTIVE: Extract ${Math.min(leadCount, 25)} Instagram handles in the "${niche}" niche.
       LOCATION: ${location || "Global"}
-      ${cleanCompetitor ? `REFERENCE: Similar to @${cleanCompetitor}` : ''}
+      ${cleanCompetitor ? `SIMILARITY SEED: @${cleanCompetitor}` : ''}
+      
+      ${intensityNote}
 
-      STRATEGY:
-      - Use "site:instagram.com" search queries.
-      - Target handles mentioned in bio descriptions, contact lists, or verified business profiles.
-      - Ensure accounts are currently active.
+      REQUIREMENT:
+      - Use "site:instagram.com" grounding for live verification.
+      - Extract handles only from current, active public data.
 
-      RETURN JSON ARRAY ONLY:
-      [{"username": "handle", "fullName": "Name", "bio": "Bio summary", "location": "City/Country"}]
+      RETURN JSON ARRAY:
+      [{"username": "handle", "fullName": "Name", "bio": "Bio", "location": "City"}]
     `;
 
     try {
@@ -61,20 +67,30 @@ export class GeminiService {
 
       const jsonStr = extractJson(response.text);
       const parsed = JSON.parse(jsonStr);
-      return Array.isArray(parsed) ? parsed : [];
+      return Array.isArray(parsed) ? parsed.map(p => ({ ...p, status: 'discovered' })) : [];
     } catch (error) {
       console.error("Discovery error:", error);
       return [];
     }
   }
 
-  async enrichLead(lead: Partial<Lead>): Promise<Lead> {
+  async enrichLead(lead: Partial<Lead>, mode: SearchMode = 'express'): Promise<Lead> {
     const ai = this.getClient();
+    
+    const forensicFocus = mode === 'forensic' 
+        ? "Aggressively search for email addresses, business phone numbers, and LinkedIn/External website links mentioned in bio or linked services."
+        : "Standard bio data extraction.";
+
     const prompt = `
-      TARGET: @${lead.username}
-      SEARCH: "instagram.com/${lead.username}" + public contact data.
-      EXTRACT: Email, Website, Phone, and follower count from public snippets.
-      
+      TARGET: @${lead.username} (Instagram)
+      PROTOCOL: ${mode.toUpperCase()} ENRICHMENT.
+      ${forensicFocus}
+
+      SEARCH QUERIES:
+      1. "instagram.com/${lead.username} email"
+      2. "site:facebook.com ${lead.username} contact"
+      3. "site:linkedin.com ${lead.username} ${lead.fullName}"
+
       RETURN JSON:
       {"email": "string", "phone": "string", "website": "url", "followers": "count", "category": "category", "engagementScore": 0-100}
     `;
@@ -100,7 +116,7 @@ export class GeminiService {
         location: parsedData.location || lead.location,
         bio: lead.bio || "",
         status: 'complete',
-        source: 'Intelligence Scan',
+        source: mode === 'forensic' ? 'Forensic Scan' : 'Express Extract',
         ...parsedData
       } as Lead;
     } catch (error) {

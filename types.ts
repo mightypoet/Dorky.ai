@@ -1,3 +1,4 @@
+
 export interface Lead {
   id: string;
   username: string;
@@ -15,11 +16,14 @@ export interface Lead {
   source: string; // The query used
 }
 
+export type SearchMode = 'express' | 'forensic';
+
 export interface SearchParams {
   niche: string;
   location: string;
   competitor: string;
   leadCount: number;
+  mode: SearchMode;
   minFollowers?: number;
   maxFollowers?: number;
 }
